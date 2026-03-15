@@ -7,7 +7,7 @@ alias wget='wget --https-only --secure-protocol=TLSv1_2'
 ###############################################
 
 APPDIR="$(pwd)/AppDir"
-rm -rf "$APPDIR" KeePassX-* keepassx_*.deb libaudio2_*.deb libqtcore4_*.deb libqtgui4_*.deb
+rm -rf "$APPDIR" KeePassX-* keepassx_*.deb libaudio2_*.deb libqtcore4_*.deb libqtgui4_*.deb .meta-* ubuntu-archive-key.gpg 
 
 ###############################################
 # Fetch appimagetool
@@ -30,7 +30,7 @@ fi
 
 # Globals expected:
 MIRROR="https://ubuntu.cs.utah.edu/ubuntu"
-DIST="bionic"
+DIST="xenial"
 ARCH="amd64"
 
 UBUNTU_KEY="3B4FE6ACC0B21F32"
@@ -65,9 +65,14 @@ verify_and_download() {
             exit 1
         }
 
-        # Verify signature (InRelease is clearsigned)
         echo "==> Verifying InRelease signature"
-        if ! gpg --verify "$META_DIR/InRelease" >/dev/null 2>&1; then
+
+        VERIFY_OUTPUT=$(gpg --verify "$META_DIR/InRelease" 2>&1 || true)
+
+        if echo "$VERIFY_OUTPUT" | grep -q "Good signature"; then
+            echo "InRelease signature verified successfully"
+        else
+            echo "$VERIFY_OUTPUT"
             echo "InRelease signature verification failed"
             exit 1
         fi
@@ -239,26 +244,27 @@ verify_and_download() {
 
 # Download keepassx
 verify_and_download \
-    "https://ubuntu.cs.utah.edu/ubuntu/pool/universe/k/keepassx/keepassx_2.0.3-1_amd64.deb" \
+    "https://ubuntu.cs.utah.edu/ubuntu/pool/universe/k/keepassx/keepassx_2.0.2-1_amd64.deb" \
     "universe"
 
 # Download libaudio2
 verify_and_download \
-    "https://ubuntu.cs.utah.edu/ubuntu/pool/main/n/nas/libaudio2_1.9.4-6_amd64.deb" \
+    "https://ubuntu.cs.utah.edu/ubuntu/pool/main/n/nas/libaudio2_1.9.4-4_amd64.deb" \
     "main"
 
 # Download libqtcore4
 verify_and_download \
-    "https://ubuntu.cs.utah.edu/ubuntu/pool/universe/q/qt4-x11/libqtcore4_4.8.7+dfsg-7ubuntu1_amd64.deb" \
-    "universe"
+    "https://ubuntu.cs.utah.edu/ubuntu/pool/main/q/qt4-x11/libqtcore4_4.8.7+dfsg-5ubuntu2_amd64.deb" \
+    "main"
 
 # Download libqtgui4
 verify_and_download \
-    "https://ubuntu.cs.utah.edu/ubuntu/pool/universe/q/qt4-x11/libqtgui4_4.8.7+dfsg-7ubuntu1_amd64.deb" \
-    "universe"
+    "https://ubuntu.cs.utah.edu/ubuntu/pool/main/q/qt4-x11/libqtgui4_4.8.7+dfsg-5ubuntu2_amd64.deb" \
+    "main"
 
-# Remove metadata
+# Remove metadata and the key
 rm -rf .meta-*
+rm -f ubuntu-archive-key.gpg
 
 ###############################################
 # Prepare sources
