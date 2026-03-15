@@ -262,6 +262,11 @@ verify_and_download \
     "https://ubuntu.cs.utah.edu/ubuntu/pool/main/q/qt4-x11/libqtgui4_4.8.7+dfsg-5ubuntu2_amd64.deb" \
     "main"
 
+# Download libpng12-0
+verify_and_download \
+    "https://ubuntu.cs.utah.edu/ubuntu/pool/main/libp/libpng/libpng12-0_1.2.54-1ubuntu1_amd64.deb" \
+    "main"
+
 # Remove metadata and the key
 rm -rf .meta-*
 rm -f ubuntu-archive-key.gpg
@@ -324,6 +329,10 @@ extract_deb libqtcore4_*.deb \
 # libqtgui4
 extract_deb libqtgui4_*.deb \
     "./$LIBS/libQtGui.so.4*"
+
+# libpng12-0
+extract_deb libpng12-0_*.deb \
+    "./lib/x86_64-linux-gnu/libpng12.so.0*"
 
 # Force‑decompress real .svgz files
 gzip -dc "$APPDIR/$ICONS/keepassx.svgz" \
