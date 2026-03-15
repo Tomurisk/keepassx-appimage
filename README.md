@@ -5,8 +5,31 @@ Run the AppImage in command line with argument `--reg` or `-r` to create the des
 Run the AppImage in command line with argument `--unreg` or `-u` to remove them
 
 # Tested distros
+<img src="https://upload.wikimedia.org/wikipedia/commons/4/41/Fedora_icon_(2021).svg" width="20"> Fedora 20
 
-WIP
+<img src="https://upload.wikimedia.org/wikipedia/commons/6/66/Openlogo-debianV2.svg" width="20"> Debian 8
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/6/66/Openlogo-debianV2.svg" width="20"> Debian 9
+
+<img src="https://upload.wikimedia.org/wikipedia/en/5/56/Puppy_Linux_Logo.png" width="20"> S15Pup64 22.12 260201
+
+<img src="https://upload.wikimedia.org/wikipedia/en/5/56/Puppy_Linux_Logo.png" width="20"> VoidPup64 22.02 260301
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/7/7b/Ubuntu-logo-no-wordmark-solid-o-2022.svg" width="20"> Ubuntu 22.04
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/f/ff/Solus.svg" width="20"> Solus 2025-11-29
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/d/d4/MX_Linux_logo.svg" width="20"> MX Linux 25.1
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/7/70/Bodhi_Leaf.png" width="20"> Bodhi Linux 7.0.0
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/4/41/Fedora_icon_(2021).svg" width="20"> Fedora 43
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/3/3f/Linux_Mint_logo_without_wordmark.svg" width="20"> Linux Mint 22.3 Zena
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/c/cf/Q4OS_Icon.png" width="20"> Q4OS 6.5
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/d/d1/OpenSUSE_Button.svg" width="20"> openSUSE Tumbleweed 20260312
 
 # Credits
 ![GitHub License](https://img.shields.io/badge/License-GPL%202.0-green)
