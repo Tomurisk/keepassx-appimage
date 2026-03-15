@@ -439,6 +439,9 @@ case "${1:-}" in
     --unreg|-u) exec "$HERE/usr/bin/registration" --unregister "$HERE" ;;
 esac
 
+# Use only the AppImage's icon directories
+export XDG_DATA_DIRS="$HERE/usr/share"
+
 export LD_LIBRARY_PATH="$HERE/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH:-}"
 exec "$HERE/usr/bin/keepassx" "$@"
 EOF
