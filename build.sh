@@ -299,8 +299,12 @@ extract_deb() {
     local DATA_TAR
     DATA_TAR=$(find "$TMPDIR" -maxdepth 1 -type f -name "data.tar.*")
 
-    # Extract only the needed files
-    tar --wildcards -xf "$DATA_TAR" -C "$APPDIR" "${patterns[@]}"
+    # Extract only the needed files, replace ./lib to ./usr/lib for
+    # some extractions to succeed
+    tar --wildcards \
+    --transform='s|^./lib/|./usr/lib/|' \
+    -xf "$DATA_TAR" -C "$APPDIR" \
+    "${patterns[@]}"
 
     # Cleanup
     rm -rf "$TMPDIR"
