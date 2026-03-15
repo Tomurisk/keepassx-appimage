@@ -439,6 +439,10 @@ case "${1:-}" in
     --unreg|-u) exec "$HERE/usr/bin/registration" --unregister "$HERE" ;;
 esac
 
+# Don't use system theme
+export KDE_FULL_SESSION=false
+export GTK2_RC_FILES=/dev/null
+
 # Use only the AppImage's icon directories
 export XDG_DATA_DIRS="$HERE/usr/share"
 
