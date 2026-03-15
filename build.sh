@@ -244,27 +244,37 @@ verify_and_download() {
 
 # Download keepassx
 verify_and_download \
-    "https://ubuntu.cs.utah.edu/ubuntu/pool/universe/k/keepassx/keepassx_2.0.2-1_amd64.deb" \
+    "$MIRROR/pool/universe/k/keepassx/keepassx_2.0.2-1_amd64.deb" \
     "universe"
 
 # Download libaudio2
 verify_and_download \
-    "https://ubuntu.cs.utah.edu/ubuntu/pool/main/n/nas/libaudio2_1.9.4-4_amd64.deb" \
+    "$MIRROR/pool/main/n/nas/libaudio2_1.9.4-4_amd64.deb" \
     "main"
 
 # Download libqtcore4
 verify_and_download \
-    "https://ubuntu.cs.utah.edu/ubuntu/pool/main/q/qt4-x11/libqtcore4_4.8.7+dfsg-5ubuntu2_amd64.deb" \
+    "$MIRROR/pool/main/q/qt4-x11/libqtcore4_4.8.7+dfsg-5ubuntu2_amd64.deb" \
     "main"
 
 # Download libqtgui4
 verify_and_download \
-    "https://ubuntu.cs.utah.edu/ubuntu/pool/main/q/qt4-x11/libqtgui4_4.8.7+dfsg-5ubuntu2_amd64.deb" \
+    "$MIRROR/pool/main/q/qt4-x11/libqtgui4_4.8.7+dfsg-5ubuntu2_amd64.deb" \
     "main"
 
 # Download libpng12-0
 verify_and_download \
-    "https://ubuntu.cs.utah.edu/ubuntu/pool/main/libp/libpng/libpng12-0_1.2.54-1ubuntu1_amd64.deb" \
+    "$MIRROR/pool/main/libp/libpng/libpng12-0_1.2.54-1ubuntu1_amd64.deb" \
+    "main"
+
+# Download libgcrypt20
+verify_and_download \
+    "$MIRROR/pool/main/libg/libgcrypt20/libgcrypt20_1.6.5-2_amd64.deb" \
+    "main"
+
+# Download libgpg-error0
+verify_and_download \
+    "$MIRROR/pool/main/libg/libgpg-error/libgpg-error0_1.21-2ubuntu1_amd64.deb" \
     "main"
 
 # Remove metadata and the key
@@ -337,6 +347,14 @@ extract_deb libqtgui4_*.deb \
 # libpng12-0
 extract_deb libpng12-0_*.deb \
     "./lib/x86_64-linux-gnu/libpng12.so.0*"
+
+# libgcrypt20
+extract_deb libgcrypt20_*.deb \
+    "./lib/x86_64-linux-gnu/libgcrypt.so.20*"
+
+# libgpg-error0
+extract_deb libgpg-error0_*.deb \
+    "./lib/x86_64-linux-gnu/libgpg-error.so.0*"
 
 # Force‑decompress real .svgz files
 gzip -dc "$APPDIR/$ICONS/keepassx.svgz" \
