@@ -69,8 +69,10 @@ verify_and_download() {
 
         VERIFY_OUTPUT=$(gpg --verify "$META_DIR/InRelease" 2>&1 || true)
 
-        if echo "$VERIFY_OUTPUT" | grep -q "Good signature"; then
-            echo "InRelease signature verified successfully"
+        if echo "$VERIFY_OUTPUT" \
+            | grep -A1 "using RSA key $UBUNTU_KEY" \
+            | grep -q "Good signature from"; then
+            echo "InRelease signature verified with key $UBUNTU_KEY"
         else
             echo "$VERIFY_OUTPUT"
             echo "InRelease signature verification failed"
@@ -187,7 +189,8 @@ verify_and_download() {
     # We require both Package: and matching Filename: and SHA256:
     read -r META_FILENAME META_SHA < <(
         awk -v target="$DEB_FILE" '
-            /^Package:/ { in_pkg=1; fname=""; sha="" }
+            /^Package:/ { in_pkg=1; fname=""; sha=""; next }
+            /^$/ { in_pkg=0 }
             in_pkg && /^Filename:/ {
                 # Extract only the basename
                 split($2, a, "/")
