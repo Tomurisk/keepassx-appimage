@@ -1,4 +1,7 @@
 ![GitHub License](https://img.shields.io/github/license/Tomurisk/keepassx-appimage)
+> [!CAUTION]  
+> KeePassX is a long-dead software project, therefore has numerous vulnerabilities that were fixed in KeePassXC. Avoid interacting with untrusted databases, or using image thumbnails. KeePass XC [official AppImage](https://github.com/keepassxreboot/keepassxc/releases) is strongly recommended for the average user over this AppImage. Continue only if you know what you're doing.
+
 # Application menu (un)registration
 Run the AppImage in command line with argument `--reg` or `-r` to create the desktop file and associated icon
 
