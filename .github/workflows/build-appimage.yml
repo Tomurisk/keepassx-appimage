@@ -1,0 +1,63 @@
+name: Build AppImage (Continuous)
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Delete old continuous release and tag
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          API="https://api.github.com/repos/Tomurisk/keepassx-appimage"
+
+          RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "$API/releases/tags/continuous" || true)
+
+          RELEASE_ID=$(echo "$RESPONSE" | grep '"id":' | head -n1 | sed 's/[^0-9]*//g' || true)
+
+          if [ -n "$RELEASE_ID" ]; then
+            echo "Deleting release ID: $RELEASE_ID"
+            curl -s -X DELETE \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "$API/releases/$RELEASE_ID" || true
+          else
+            echo "No existing release found."
+          fi
+
+          TAG_RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "$API/git/refs/tags/continuous" || true)
+
+          if echo "$TAG_RESPONSE" | grep -q '"ref":' 2>/dev/null; then
+            echo "Deleting tag: continuous"
+            curl -s -X DELETE \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              "$API/git/refs/tags/continuous" || true
+          else
+            echo "Tag 'continuous' does not exist."
+          fi
+
+      - uses: actions/checkout@main
+
+      - name: Make build script executable
+        run: chmod +x build.sh
+
+      - name: Build AppImage
+        run: ./build.sh
+
+      - name: Upload to Continuous Release
+        uses: softprops/action-gh-release@master
+        with:
+          tag_name: continuous
+          name: Continuous Build
+          files: "*.AppImage"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
