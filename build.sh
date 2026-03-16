@@ -7,7 +7,7 @@ alias wget='wget --https-only --secure-protocol=TLSv1_2'
 ###############################################
 
 APPDIR="$(pwd)/AppDir"
-rm -rf "$APPDIR" KeePassX-* keepassx_*.deb libaudio2_*.deb libqtcore4_*.deb libqtgui4_*.deb .meta-* ubuntu-archive-key.gpg 
+rm -rf "$APPDIR" KeePassX-* *.deb
 
 ###############################################
 # Fetch appimagetool
@@ -28,264 +28,22 @@ fi
 # Download packages
 ###############################################
 
-# Globals expected:
-MIRROR="https://ubuntu.cs.utah.edu/ubuntu"
-DIST="xenial"
-ARCH="amd64"
+sudo tee /etc/apt/sources.list.d/xenial.list >/dev/null <<EOF
+deb [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://ubuntu.cs.utah.edu/ubuntu xenial main universe
+EOF
 
-UBUNTU_KEY="3B4FE6ACC0B21F32"
-echo "Extracting Ubuntu archive signing key from system..."
-gpg --no-default-keyring \
-    --keyring /usr/share/keyrings/ubuntu-archive-keyring.gpg \
-    --export $UBUNTU_KEY \
-    > ubuntu-archive-key.gpg
+sudo apt update
 
-echo "Importing Ubuntu signing key..."
-gpg --keyserver hkps://keyserver.ubuntu.com --recv-keys $UBUNTU_KEY >/dev/null
-
-verify_and_download() {
-    local DEB_URL="$1"
-    local COMP="$2"   # e.g. main, universe, restricted, multiverse
-
-    local DEB_FILE PKG_NAME META_DIR
-    DEB_FILE=$(basename "$DEB_URL")
-    PKG_NAME=$(echo "$DEB_FILE" | cut -d_ -f1)
-    META_DIR=".meta-${DIST}-${COMP}-${ARCH}"
-
-    mkdir -p "$META_DIR"
-
-    ########################################
-    # 1. Fetch and verify Release
-    ########################################
-    if [ ! -f "$META_DIR/InRelease" ]; then
-        echo "==> Fetching InRelease metadata for $DIST/$COMP ($ARCH)"
-
-        wget -q "$MIRROR/dists/$DIST/InRelease" -O "$META_DIR/InRelease" || {
-            echo "Failed to download InRelease"
-            exit 1
-        }
-
-        echo "==> Verifying InRelease signature"
-
-        VERIFY_OUTPUT=$(gpg --verify "$META_DIR/InRelease" 2>&1 || true)
-
-        if echo "$VERIFY_OUTPUT" \
-            | grep -A1 "using RSA key $UBUNTU_KEY" \
-            | grep -q "Good signature from"; then
-            echo "InRelease signature verified with key $UBUNTU_KEY"
-        else
-            echo "$VERIFY_OUTPUT"
-            echo "InRelease signature verification failed"
-            exit 1
-        fi
-    fi
-
-    ########################################
-    # 2. Find SHA256 + size for Packages.xz / Packages.gz
-    ########################################
-    local REL_FILE="$META_DIR/InRelease"
-    local REL_PATH_XZ="$COMP/binary-$ARCH/Packages.xz"
-    local REL_PATH_GZ="$COMP/binary-$ARCH/Packages.gz"
-
-    local META_PATH META_URL EXPECTED_SHA EXPECTED_SIZE
-
-    # Helper: extract SHA256 + size for a given path from InRelease
-    _extract_sha_size() {
-        local path="$1"
-        awk -v p="$path" '
-            $1 == "SHA256:" { in_sha=1; next }
-            in_sha {
-                # Look for a line ending with the exact path
-                if ($0 ~ ("[[:space:]]" p "$")) {
-                    print $1, $2
-                    exit
-                }
-            }
-        ' "$REL_FILE"
-    }
-
-    # Try Packages.xz first
-    read -r EXPECTED_SHA EXPECTED_SIZE <<< "$(_extract_sha_size "$REL_PATH_XZ")"
-
-    if [ -n "$EXPECTED_SHA" ] && [ -n "$EXPECTED_SIZE" ]; then
-        META_PATH="$META_DIR/Packages.xz"
-        META_URL="$MIRROR/dists/$DIST/$REL_PATH_XZ"
-        echo "==> Using $REL_PATH_XZ (preferred)"
-    else
-        echo "Packages.xz not listed in InRelease, trying Packages.gz..."
-        read -r EXPECTED_SHA EXPECTED_SIZE <<< "$(_extract_sha_size "$REL_PATH_GZ")"
-        if [ -n "$EXPECTED_SHA" ] && [ -n "$EXPECTED_SIZE" ]; then
-            META_PATH="$META_DIR/Packages.gz"
-            META_URL="$MIRROR/dists/$DIST/$REL_PATH_GZ"
-            echo "==> Using $REL_PATH_GZ (fallback)"
-        else
-            echo "No SHA256 entry for $REL_PATH_XZ or $REL_PATH_GZ in InRelease"
-            exit 1
-        fi
-    fi
-
-    ########################################
-    # 3. Download and verify metadata file
-    ########################################
-    if [ ! -f "$META_PATH" ]; then
-        echo "==> Downloading metadata: $META_URL"
-        wget -q "$META_URL" -O "$META_PATH" || {
-            echo "Failed to download metadata file"
-            exit 1
-        }
-    fi
-
-    echo "==> Verifying metadata size and SHA256"
-    local ACT_SIZE ACT_SHA
-    ACT_SIZE=$(stat -c%s "$META_PATH")
-    ACT_SHA=$(sha256sum "$META_PATH" | awk '{print $1}')
-
-    if [ "$ACT_SIZE" != "$EXPECTED_SIZE" ]; then
-        echo "Size mismatch for metadata: expected $EXPECTED_SIZE, got $ACT_SIZE"
-        exit 1
-    fi
-
-    if [ "$ACT_SHA" != "$EXPECTED_SHA" ]; then
-        echo "SHA256 mismatch for metadata"
-        echo "Expected: $EXPECTED_SHA"
-        echo "Actual:   $ACT_SHA"
-        exit 1
-    fi
-
-    echo "==> Metadata verified"
-
-    ########################################
-    # 4. Ensure we have uncompressed Packages
-    ########################################
-    local PKG_INDEX="$META_DIR/Packages"
-    if [ ! -f "$PKG_INDEX" ]; then
-        case "$META_PATH" in
-            *.xz)
-                xz -dc "$META_PATH" > "$PKG_INDEX" || {
-                    echo "Failed to decompress Packages.xz"
-                    exit 1
-                }
-                ;;
-            *.gz)
-                gunzip -c "$META_PATH" > "$PKG_INDEX" || {
-                    echo "Failed to decompress Packages.gz"
-                    exit 1
-                }
-                ;;
-            *)
-                echo "Unknown metadata format: $META_PATH"
-                exit 1
-                ;;
-        esac
-    fi
-
-    ########################################
-    # 5. Find filename + SHA256 for this package
-    ########################################
-    echo "==> Looking up $DEB_FILE in metadata"
-
-    local META_FILENAME META_SHA
-    
-    # We require both Package: and matching Filename: and SHA256:
-    read -r META_FILENAME META_SHA < <(
-        awk -v target="$DEB_FILE" '
-            /^Package:/ { in_pkg=1; fname=""; sha=""; next }
-            /^$/ { in_pkg=0 }
-            in_pkg && /^Filename:/ {
-                # Extract only the basename
-                split($2, a, "/")
-                if (a[length(a)] == target) fname=$2
-            }
-            in_pkg && /^SHA256:/ { sha=$2 }
-            in_pkg && fname && sha {
-                print fname, sha
-                exit
-            }
-        ' "$PKG_INDEX"
-    )
-
-    if [ -z "$META_FILENAME" ] || [ -z "$META_SHA" ]; then
-        echo "Package $DEB_FILE not found with Filename+SHA256 in metadata"
-        return 1
-    fi
-
-    echo "==> Metadata filename: $META_FILENAME"
-    echo "==> Metadata SHA256:   $META_SHA"
-
-    # Check that the basename matches the .deb we intend to download
-    local META_BASENAME
-    META_BASENAME=$(basename "$META_FILENAME")
-    if [ "$META_BASENAME" != "$DEB_FILE" ]; then
-        echo "Filename mismatch:"
-        echo "  Metadata expects: $META_BASENAME"
-        echo "  URL provides:     $DEB_FILE"
-        exit 1
-    fi
-
-    ########################################
-    # 6. Download and verify the .deb
-    ########################################
-    echo "==> Downloading $DEB_FILE"
-    wget -q "$DEB_URL" -O "$DEB_FILE" || {
-        echo "Failed to download $DEB_FILE"
-        exit 1
-    }
-
-    echo "==> Verifying .deb SHA256"
-    local DEB_SHA
-    DEB_SHA=$(sha256sum "$DEB_FILE" | awk '{print $1}')
-
-    if [ "$DEB_SHA" != "$META_SHA" ]; then
-        echo "SHA256 mismatch for $DEB_FILE"
-        echo "Expected: $META_SHA"
-        echo "Actual:   $DEB_SHA"
-        exit 1
-    fi
-
-    echo "==> Verification successful for $DEB_FILE"
-}
-
-# Download keepassx
-verify_and_download \
-    "$MIRROR/pool/universe/k/keepassx/keepassx_2.0.2-1_amd64.deb" \
-    "universe"
-
-# Download libaudio2
-verify_and_download \
-    "$MIRROR/pool/main/n/nas/libaudio2_1.9.4-4_amd64.deb" \
-    "main"
-
-# Download libqtcore4
-verify_and_download \
-    "$MIRROR/pool/main/q/qt4-x11/libqtcore4_4.8.7+dfsg-5ubuntu2_amd64.deb" \
-    "main"
-
-# Download libqtgui4
-verify_and_download \
-    "$MIRROR/pool/main/q/qt4-x11/libqtgui4_4.8.7+dfsg-5ubuntu2_amd64.deb" \
-    "main"
-
-# Download libpng12-0
-verify_and_download \
-    "$MIRROR/pool/main/libp/libpng/libpng12-0_1.2.54-1ubuntu1_amd64.deb" \
-    "main"
-
-# Download libgcrypt20
-verify_and_download \
-    "$MIRROR/pool/main/libg/libgcrypt20/libgcrypt20_1.6.5-2_amd64.deb" \
-    "main"
-
-# Download libgpg-error0
-verify_and_download \
-    "$MIRROR/pool/main/libg/libgpg-error/libgpg-error0_1.21-2ubuntu1_amd64.deb" \
-    "main"
-
-# Remove metadata and the key
-rm -rf .meta-*
-rm -f ubuntu-archive-key.gpg
+apt-get download keepassx=2.0.2-1
+apt-get download libaudio2=1.9.4-4
+apt-get download libqtcore4=4:4.8.7+dfsg-5ubuntu2
+apt-get download libqtgui4=4:4.8.7+dfsg-5ubuntu2
+apt-get download libpng12-0=1.2.54-1ubuntu1
+apt-get download libgcrypt20=1.6.5-2
+apt-get download libgpg-error0=1.21-2ubuntu1
 
 ###############################################
-# Prepare sources
+# Prepare source deb files and bundle libs
 ###############################################
 
 mkdir -p $APPDIR
@@ -333,7 +91,6 @@ extract_deb keepassx_*.deb \
     "./usr/share/applications" \
     "./$ICONS/keepassx.svgz"
 
-
 # libaudio2
 extract_deb libaudio2_*.deb \
     "./$LIBS/libaudio.so.2*" \
@@ -367,6 +124,8 @@ rm "$APPDIR/$ICONS/keepassx.svgz"
 cp "$APPDIR/$ICONS/keepassx.svg" $APPDIR
 sed -i 's/Exec=.*/Exec=\/AppRun/' "$APPDIR/usr/share/applications/keepassx.desktop"
 cp "$APPDIR/usr/share/applications/keepassx.desktop" $APPDIR
+
+rm -rf *.deb
 
 ###############################################
 # Registration script
@@ -466,6 +225,6 @@ ARCH=x86_64 "$APPIMAGETOOL" --appimage-extract-and-run "$APPDIR"
 ###############################################
 
 shopt -s extglob
-rm -rf "$APPDIR" keepassx_*.deb libaudio2_*.deb libqtcore4_*.deb libqtgui4_*.deb
+rm -rf "$APPDIR"
 
 echo "Done"
