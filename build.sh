@@ -10,21 +10,6 @@ APPDIR="$(pwd)/AppDir"
 rm -rf "$APPDIR" KeePassX-* *.deb
 
 ###############################################
-# Fetch appimagetool
-###############################################
-
-APPIMAGETOOL="$HOME/Programs/appimagetool-x86_64.AppImage"
-
-mkdir -p "$HOME/Programs"
-
-if [ ! -f "$APPIMAGETOOL" ]; then
-    echo "Downloading appimagetool..."
-    wget -O "$APPIMAGETOOL" \
-      "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
-    chmod +x "$APPIMAGETOOL"
-fi
-
-###############################################
 # Download packages
 ###############################################
 
@@ -33,6 +18,7 @@ deb [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://ubuntu.cs
 EOF
 
 sudo apt update
+sudo apt install -y jq
 
 apt-get download keepassx=2.0.2-1
 apt-get download libaudio2=1.9.4-4
@@ -41,6 +27,31 @@ apt-get download libqtgui4=4:4.8.7+dfsg-5ubuntu2
 apt-get download libpng12-0=1.2.54-1ubuntu1
 apt-get download libgcrypt20=1.6.5-2
 apt-get download libgpg-error0=1.21-2ubuntu1
+
+###############################################
+# Fetch appimagetool
+###############################################
+
+APPIMAGETOOL="$HOME/Programs/appimagetool-x86_64.AppImage"
+AIT_SHA256=$(wget -qO- https://api.github.com/repos/AppImage/appimagetool/releases/latest \
+  | jq -r '.assets[] | select(.name=="appimagetool-x86_64.AppImage") | .digest' \
+  | cut -d: -f2)
+
+mkdir -p "$HOME/Programs"
+
+if [ ! -f "$APPIMAGETOOL" ]; then
+    echo "Downloading appimagetool..."
+    wget -O "$APPIMAGETOOL" \
+      "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+
+    if echo "$AIT_SHA256  $APPIMAGETOOL" | sha256sum -c -; then
+        echo "appimagetool checksum OK"
+        chmod +x "$APPIMAGETOOL"
+    else
+        echo "ERROR: Checksum mismatch!"
+        exit 1
+    fi
+fi
 
 ###############################################
 # Prepare source deb files and bundle libs
