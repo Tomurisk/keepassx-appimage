@@ -94,10 +94,12 @@ extract_deb() {
 }
 
 LIBS="usr/lib/x86_64-linux-gnu"
+DOC="usr/share/doc"
 ICONS="usr/share/icons/hicolor/scalable/apps"
 
 # keepassx
 extract_deb keepassx_*.deb \
+    "./$DOC/keepassx/copyright" \
     "./usr/bin" \
     "./usr/share/keepassx" \
     "./usr/share/applications" \
@@ -105,27 +107,33 @@ extract_deb keepassx_*.deb \
 
 # libaudio2
 extract_deb libaudio2_*.deb \
+    "./$DOC/libaudio2/copyright" \
     "./$LIBS/libaudio.so.2*" \
     "./usr/share/libaudio2"
 
 # libqtcore4
 extract_deb libqtcore4_*.deb \
+    "./$DOC/libqtcore4/copyright" \
     "./$LIBS/libQtCore.so.4*"
 
 # libqtgui4
 extract_deb libqtgui4_*.deb \
+    "./$DOC/libqtgui4/copyright" \
     "./$LIBS/libQtGui.so.4*"
 
 # libpng12-0
 extract_deb libpng12-0_*.deb \
+    "./$DOC/libpng12-0/copyright" \
     "./lib/x86_64-linux-gnu/libpng12.so.0*"
 
 # libgcrypt20
 extract_deb libgcrypt20_*.deb \
+    "./$DOC/libgcrypt20/copyright" \
     "./lib/x86_64-linux-gnu/libgcrypt.so.20*"
 
 # libgpg-error0
 extract_deb libgpg-error0_*.deb \
+    "./$DOC/libgpg-error0/copyright" \
     "./lib/x86_64-linux-gnu/libgpg-error.so.0*"
 
 # Force‑decompress real .svgz files
