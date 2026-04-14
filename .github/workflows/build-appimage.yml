@@ -7,20 +7,22 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  cleanup:
+    name: Delete old continuous release and tag
     runs-on: ubuntu-latest
-
     steps:
-      - name: Delete old continuous release and tag
+      - name: DELETE request
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           API="https://api.github.com/repos/Tomurisk/keepassx-appimage"
 
+          # Query release by tag
           RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
             "$API/releases/tags/continuous" || true)
 
+          # Extract release ID safely
           RELEASE_ID=$(echo "$RESPONSE" | grep '"id":' | head -n1 | sed 's/[^0-9]*//g' || true)
 
           if [ -n "$RELEASE_ID" ]; then
@@ -33,6 +35,7 @@ jobs:
             echo "No existing release found."
           fi
 
+          # Query tag
           TAG_RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
             "$API/git/refs/tags/continuous" || true)
 
@@ -45,6 +48,28 @@ jobs:
             echo "Tag 'continuous' does not exist."
           fi
 
+  build-appimage:
+    name: Build AppImage (${{ matrix.arch }})
+    needs: cleanup
+    runs-on: ${{ matrix.runner }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            env:
+              ARCH: x86_64
+            runner: ubuntu-latest
+          - arch: i386
+            runner: ubuntu-latest
+            env:
+              ARCH: i386
+
+    env:
+      ARCH: ${{ matrix.env.ARCH }}
+
+    steps:
       - uses: actions/checkout@main
 
       - name: Make build script executable

@@ -6,11 +6,24 @@ alias wget='wget --https-only --secure-protocol=TLSv1_2'
 # Config
 ###############################################
 
-APPDIR="$(pwd)/AppDir"
-AIT_DIR="/tmp/appimagetool"
+# Versions
 AIT_VER="1.9.1"
 
-AIT_SHA256="ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0"
+# Definitions
+APPDIR="$(pwd)/AppDir"
+AIT_DIR="/tmp/appimagetool"
+
+# Hashes
+AMD64_AIT_SHA256="ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0"
+ARM64_AIT_SHA256="f0837e7448a0c1e4e650a93bb3e85802546e60654ef287576f46c71c126a9158"
+i686_AIT_SHA256="7ad9ff47c203aae0149b18f6df9e3018b2e2f470ea644a0413e3ded39e9e3bdb"
+
+# Set the right arch variables
+if [[ "$ARCH" == "x86_64" ]]; then
+    AIT_SHA256="$AMD64_AIT_SHA256"
+elif [[ "$ARCH" == "i386" ]]; then
+    AIT_SHA256="$i686_AIT_SHA256"
+fi
 
 # Clear old resources
 rm -rf "$APPDIR" "$AIT_DIR" KeePassX-* *.deb
@@ -19,31 +32,46 @@ rm -rf "$APPDIR" "$AIT_DIR" KeePassX-* *.deb
 # Download packages
 ###############################################
 
+sudo dpkg --add-architecture i386
 sudo tee /etc/apt/sources.list.d/xenial.list >/dev/null <<EOF
-deb [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://ubuntu.cs.utah.edu/ubuntu xenial main universe
+deb [arch=amd64,i386 signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://ubuntu.cs.utah.edu/ubuntu xenial main universe
+deb [arch=amd64,i386 signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://ubuntu.cs.utah.edu/ubuntu xenial-updates main universe
+deb [arch=amd64,i386 signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://ubuntu.cs.utah.edu/ubuntu xenial-security main universe
 EOF
 
 sudo apt update
 
-apt-get download keepassx=2.0.2-1
-apt-get download libaudio2=1.9.4-4
-apt-get download libqtcore4=4:4.8.7+dfsg-5ubuntu2
-apt-get download libqtgui4=4:4.8.7+dfsg-5ubuntu2
-apt-get download libpng12-0=1.2.54-1ubuntu1
-apt-get download libgcrypt20=1.6.5-2
-apt-get download libgpg-error0=1.21-2ubuntu1
+case "$ARCH" in
+  x86_64) DEB_ARCH="amd64" ;;
+  i386)   DEB_ARCH="i386" ;;
+  *)      DEB_ARCH="$ARCH" ;;
+esac
+
+apt-get download keepassx:${DEB_ARCH}=2.0.2-1
+apt-get download libaudio2:${DEB_ARCH}=1.9.4-4
+apt-get download libqtcore4:${DEB_ARCH}=4:4.8.7+dfsg-5ubuntu2
+apt-get download libqtgui4:${DEB_ARCH}=4:4.8.7+dfsg-5ubuntu2
+apt-get download libpng12-0:${DEB_ARCH}=1.2.54-1ubuntu1
+apt-get download libgcrypt20:${DEB_ARCH}=1.6.5-2
+apt-get download libgpg-error0:${DEB_ARCH}=1.21-2ubuntu1
 
 ###############################################
 # Fetch appimagetool
 ###############################################
 
-APPIMAGETOOL="$AIT_DIR/appimagetool-x86_64.AppImage"
+APPIMAGETOOL="$AIT_DIR/appimagetool.AppImage"
 mkdir -p "$AIT_DIR"
 
 if [ ! -f "$APPIMAGETOOL" ]; then
     echo "Downloading appimagetool..."
-    wget -O "$APPIMAGETOOL" \
-      "https://github.com/AppImage/appimagetool/releases/download/${AIT_VER}/appimagetool-x86_64.AppImage"
+
+    if [[ "$ARCH" == "i386" ]]; then
+        URL="https://github.com/AppImage/appimagetool/releases/download/${AIT_VER}/appimagetool-i686.AppImage"
+    else
+        URL="https://github.com/AppImage/appimagetool/releases/download/${AIT_VER}/appimagetool-${ARCH}.AppImage"
+    fi
+
+    wget -O "$APPIMAGETOOL" "$URL"
 
     if echo "$AIT_SHA256  $APPIMAGETOOL" | sha256sum -c -; then
         echo "appimagetool checksum OK"
@@ -93,7 +121,7 @@ extract_deb() {
     rm -rf "$TMPDIR"
 }
 
-LIBS="usr/lib/x86_64-linux-gnu"
+LIBS="usr/lib/${ARCH}-linux-gnu"
 DOC="usr/share/doc"
 ICONS="usr/share/icons/hicolor/scalable/apps"
 
@@ -124,17 +152,17 @@ extract_deb libqtgui4_*.deb \
 # libpng12-0
 extract_deb libpng12-0_*.deb \
     "./$DOC/libpng12-0/copyright" \
-    "./lib/x86_64-linux-gnu/libpng12.so.0*"
+    "./lib/${ARCH}-linux-gnu/libpng12.so.0*"
 
 # libgcrypt20
 extract_deb libgcrypt20_*.deb \
     "./$DOC/libgcrypt20/copyright" \
-    "./lib/x86_64-linux-gnu/libgcrypt.so.20*"
+    "./lib/${ARCH}-linux-gnu/libgcrypt.so.20*"
 
 # libgpg-error0
 extract_deb libgpg-error0_*.deb \
     "./$DOC/libgpg-error0/copyright" \
-    "./lib/x86_64-linux-gnu/libgpg-error.so.0*"
+    "./lib/${ARCH}-linux-gnu/libgpg-error.so.0*"
 
 # Force‑decompress real .svgz files
 gzip -dc "$APPDIR/$ICONS/keepassx.svgz" \
@@ -211,14 +239,14 @@ chmod +x "$APPDIR/usr/bin/registration"
 # Simple AppRun
 ###############################################
 
-cat > "$APPDIR/AppRun" << 'EOF'
+cat > "$APPDIR/AppRun" << EOF
 #!/bin/bash
 set -euo pipefail
 HERE="$(dirname "$(readlink -f "$0")")"
 
-case "${1:-}" in
-    --reg|-r) exec "$HERE/usr/bin/registration" --register "$HERE" ;;
-    --unreg|-u) exec "$HERE/usr/bin/registration" --unregister "$HERE" ;;
+case "\${1:-}" in
+    --reg|-r) exec "\$HERE/usr/bin/registration" --register "\$HERE" ;;
+    --unreg|-u) exec "\$HERE/usr/bin/registration" --unregister "\$HERE" ;;
 esac
 
 # Don't use system theme
@@ -226,10 +254,10 @@ export KDE_FULL_SESSION=false
 export GTK2_RC_FILES=/dev/null
 
 # Use only the AppImage's icon directories
-export XDG_DATA_DIRS="$HERE/usr/share"
+export XDG_DATA_DIRS="\$HERE/usr/share"
 
-export LD_LIBRARY_PATH="$HERE/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH:-}"
-exec "$HERE/usr/bin/keepassx" "$@"
+export LD_LIBRARY_PATH="\$HERE/usr/lib/${ARCH}-linux-gnu:\${LD_LIBRARY_PATH:-}"
+exec "\$HERE/usr/bin/keepassx" "\$@"
 EOF
 
 chmod +x "$APPDIR/AppRun"
@@ -238,7 +266,7 @@ chmod +x "$APPDIR/AppRun"
 # Build AppImage
 ###############################################
 
-RUNTIME="runtime-x86_64"
+RUNTIME="runtime-${ARCH}"
 
 gpg --import <<'EOF'
 -----BEGIN PGP PUBLIC KEY BLOCK-----
@@ -257,14 +285,21 @@ t1iQLL+WzKVkkPaVBQJmNp57AhsMBQkDwmcAAAoJEL+WzKVkkPaVY7oA/icTs/E6
 -----END PGP PUBLIC KEY BLOCK-----
 EOF
 
+if [[ "$ARCH" == "i386" ]]; then
 wget -O "$AIT_DIR/$RUNTIME.sig" \
-  "https://github.com/AppImage/type2-runtime/releases/download/continuous/$RUNTIME.sig"
-wget -O "$AIT_DIR/$RUNTIME" \
-  "https://github.com/AppImage/type2-runtime/releases/download/continuous/$RUNTIME"
+      "https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-i686.sig"
+    wget -O "$AIT_DIR/$RUNTIME" \
+      "https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-i686"
+else
+wget -O "$AIT_DIR/$RUNTIME.sig" \
+      "https://github.com/AppImage/type2-runtime/releases/download/continuous/$RUNTIME.sig"
+    wget -O "$AIT_DIR/$RUNTIME" \
+      "https://github.com/AppImage/type2-runtime/releases/download/continuous/$RUNTIME"
+fi
 
 if gpg --verify "$AIT_DIR/$RUNTIME.sig" "$AIT_DIR/$RUNTIME" 2>/dev/null; then
     echo "Runtime signature OK"
-    ARCH=x86_64 "$APPIMAGETOOL" --appimage-extract-and-run --no-appstream --runtime-file "$AIT_DIR/$RUNTIME" "$APPDIR"
+    ARCH=${ARCH} "$APPIMAGETOOL" --appimage-extract-and-run --no-appstream --runtime-file "$AIT_DIR/$RUNTIME" "$APPDIR"
 else
     echo "ERROR: Signature verification failed!"
     exit 1
