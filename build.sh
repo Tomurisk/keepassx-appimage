@@ -6,6 +6,9 @@ alias wget='wget --https-only --secure-protocol=TLSv1_2'
 # Config
 ###############################################
 
+# Architecture
+: "${ARCH:=$(uname -m)}"
+
 # Versions
 AIT_VER="1.9.1"
 
@@ -15,15 +18,24 @@ AIT_DIR="/tmp/appimagetool"
 
 # Hashes
 AMD64_AIT_SHA256="ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0"
-ARM64_AIT_SHA256="f0837e7448a0c1e4e650a93bb3e85802546e60654ef287576f46c71c126a9158"
 i686_AIT_SHA256="7ad9ff47c203aae0149b18f6df9e3018b2e2f470ea644a0413e3ded39e9e3bdb"
+ARM64_AIT_SHA256="f0837e7448a0c1e4e650a93bb3e85802546e60654ef287576f46c71c126a9158"
+ARM32_AIT_SHA256="42b61cba5495d8aaf418a5c9a015a49b85ad92efabcbd3c341f1540440e4e23d"
 
 # Set the right arch variables
-if [[ "$ARCH" == "x86_64" ]]; then
-    AIT_SHA256="$AMD64_AIT_SHA256"
-elif [[ "$ARCH" == "i386" ]]; then
-    AIT_SHA256="$i686_AIT_SHA256"
-fi
+case "$ARCH" in
+    x86_64)
+        AIT_SHA256="$AMD64_AIT_SHA256" ;;
+    i386)
+        AIT_SHA256="$i686_AIT_SHA256"  ;;
+    aarch64)
+        AIT_SHA256="$ARM64_AIT_SHA256" ;;
+    armhf)
+        AIT_SHA256="$ARM32_AIT_SHA256" ;;
+    *)
+        echo "Unsupported architecture: $ARCH"
+        exit 1 ;;
+esac
 
 # Clear old resources
 rm -rf "$APPDIR" "$AIT_DIR" KeePassX-* *.deb
@@ -32,19 +44,33 @@ rm -rf "$APPDIR" "$AIT_DIR" KeePassX-* *.deb
 # Download packages
 ###############################################
 
-sudo dpkg --add-architecture i386
-sudo tee /etc/apt/sources.list.d/xenial.list >/dev/null <<EOF
-deb [arch=amd64,i386 signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://ubuntu.cs.utah.edu/ubuntu xenial main universe
-deb [arch=amd64,i386 signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://ubuntu.cs.utah.edu/ubuntu xenial-updates main universe
-deb [arch=amd64,i386 signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://ubuntu.cs.utah.edu/ubuntu xenial-security main universe
-EOF
+if [[ "$ARCH" == "x86_64" ]]; then
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://ubuntu.cs.utah.edu/ubuntu xenial main universe" \
+    | sudo tee /etc/apt/sources.list.d/xenial.list
+elif [[ "$ARCH" == "i386" ]]; then
+    echo "deb [arch=i386 signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://ubuntu.cs.utah.edu/ubuntu xenial main universe" \
+    | sudo tee /etc/apt/sources.list.d/xenial.list
+elif [[ "$ARCH" == "aarch64" ]]; then
+    # Legacy GPG keys
+    sudo apt-key adv --keyserver hkps://keyserver.ubuntu.com --recv-keys 40976EAF437D05B5 3B4FE6ACC0B21F32
+    
+    echo "deb [arch=arm64] https://ports.ubuntu.com/ubuntu-ports xenial main universe" \
+    | sudo tee /etc/apt/sources.list.d/xenial.list
+elif [[ "$ARCH" == "armhf" ]]; then
+    # Legacy GPG keys
+    sudo apt-key adv --keyserver hkps://keyserver.ubuntu.com --recv-keys 40976EAF437D05B5 3B4FE6ACC0B21F32
+    
+    echo "deb [arch=armhf] https://ports.ubuntu.com/ubuntu-ports xenial main universe" \
+    | sudo tee /etc/apt/sources.list.d/xenial.list
+fi
 
 sudo apt update
 
 case "$ARCH" in
-  x86_64) DEB_ARCH="amd64" ;;
-  i386)   DEB_ARCH="i386" ;;
-  *)      DEB_ARCH="$ARCH" ;;
+  x86_64)  DEB_ARCH="amd64" ;;
+  i386)    DEB_ARCH="i386"  ;;
+  aarch64) DEB_ARCH="arm64" ;;
+  *)       DEB_ARCH="$ARCH" ;;
 esac
 
 apt-get download keepassx:${DEB_ARCH}=2.0.2-1
@@ -121,7 +147,16 @@ extract_deb() {
     rm -rf "$TMPDIR"
 }
 
-LIBS="usr/lib/${ARCH}-linux-gnu"
+if [[ "$ARCH" == "armhf" ]]; then
+    LIB_ARCH="arm"
+    SUFFIX="eabihf"
+else
+    LIB_ARCH="$ARCH"
+    SUFFIX=""
+fi
+
+LIBS_BASE=${LIB_ARCH}-linux-gnu${SUFFIX}
+LIBS="usr/lib/$LIBS_BASE"
 DOC="usr/share/doc"
 ICONS="usr/share/icons/hicolor/scalable/apps"
 
@@ -152,17 +187,17 @@ extract_deb libqtgui4_*.deb \
 # libpng12-0
 extract_deb libpng12-0_*.deb \
     "./$DOC/libpng12-0/copyright" \
-    "./lib/${ARCH}-linux-gnu/libpng12.so.0*"
+    "./lib/${LIBS_BASE}/libpng12.so.0*"
 
 # libgcrypt20
 extract_deb libgcrypt20_*.deb \
     "./$DOC/libgcrypt20/copyright" \
-    "./lib/${ARCH}-linux-gnu/libgcrypt.so.20*"
+    "./lib/${LIBS_BASE}/libgcrypt.so.20*"
 
 # libgpg-error0
 extract_deb libgpg-error0_*.deb \
     "./$DOC/libgpg-error0/copyright" \
-    "./lib/${ARCH}-linux-gnu/libgpg-error.so.0*"
+    "./lib/${LIBS_BASE}/libgpg-error.so.0*"
 
 # Force‑decompress real .svgz files
 gzip -dc "$APPDIR/$ICONS/keepassx.svgz" \
@@ -242,7 +277,7 @@ chmod +x "$APPDIR/usr/bin/registration"
 cat > "$APPDIR/AppRun" << EOF
 #!/bin/bash
 set -euo pipefail
-HERE="$(dirname "$(readlink -f "$0")")"
+HERE=\$(dirname "\$(readlink -f "\$0")")
 
 case "\${1:-}" in
     --reg|-r) exec "\$HERE/usr/bin/registration" --register "\$HERE" ;;
