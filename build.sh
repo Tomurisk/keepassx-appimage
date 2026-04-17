@@ -8,6 +8,7 @@ alias wget='wget --https-only --secure-protocol=TLSv1_2'
 
 # Architecture
 : "${ARCH:=$(uname -m)}"
+: "${AIT_ARCH:=$ARCH}"
 
 # Versions
 AIT_VER="1.9.1"
@@ -23,7 +24,7 @@ ARM64_AIT_SHA256="f0837e7448a0c1e4e650a93bb3e85802546e60654ef287576f46c71c126a91
 ARM32_AIT_SHA256="42b61cba5495d8aaf418a5c9a015a49b85ad92efabcbd3c341f1540440e4e23d"
 
 # Set the right arch variables
-case "$ARCH" in
+case "$AIT_ARCH" in
     x86_64)
         AIT_SHA256="$AMD64_AIT_SHA256" ;;
     i386)
@@ -33,7 +34,7 @@ case "$ARCH" in
     armhf)
         AIT_SHA256="$ARM32_AIT_SHA256" ;;
     *)
-        echo "Unsupported architecture: $ARCH"
+        echo "Unsupported architecture: $AIT_ARCH"
         exit 1 ;;
 esac
 
@@ -91,10 +92,11 @@ mkdir -p "$AIT_DIR"
 if [ ! -f "$APPIMAGETOOL" ]; then
     echo "Downloading appimagetool..."
 
-    if [[ "$ARCH" == "i386" ]]; then
+    if [[ "$AIT_ARCH" == "i386" ]]; then
         URL="https://github.com/AppImage/appimagetool/releases/download/${AIT_VER}/appimagetool-i686.AppImage"
     else
-        URL="https://github.com/AppImage/appimagetool/releases/download/${AIT_VER}/appimagetool-${ARCH}.AppImage"
+        echo "$AIT_ARCH downloading"
+        URL="https://github.com/AppImage/appimagetool/releases/download/${AIT_VER}/appimagetool-${AIT_ARCH}.AppImage"
     fi
 
     wget -O "$APPIMAGETOOL" "$URL"
@@ -291,7 +293,7 @@ export GTK2_RC_FILES=/dev/null
 # Use only the AppImage's icon directories
 export XDG_DATA_DIRS="\$HERE/usr/share"
 
-export LD_LIBRARY_PATH="\$HERE/usr/lib/${ARCH}-linux-gnu:\${LD_LIBRARY_PATH:-}"
+export LD_LIBRARY_PATH="\$HERE/usr/lib/${LIBS_BASE}:\${LD_LIBRARY_PATH:-}"
 exec "\$HERE/usr/bin/keepassx" "\$@"
 EOF
 
