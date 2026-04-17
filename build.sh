@@ -52,34 +52,27 @@ rm -rf "$APPDIR" "$AIT_DIR" KeePassX-* *.deb
 # Download packages
 ###############################################
 
-if [[ "$ARCH" == "x86_64" ]]; then
-    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://ubuntu.cs.utah.edu/ubuntu xenial main universe" \
-    | sudo tee /etc/apt/sources.list.d/xenial.list
-elif [[ "$ARCH" == "i386" ]]; then
-    echo "deb [arch=i386 signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://ubuntu.cs.utah.edu/ubuntu xenial main universe" \
-    | sudo tee /etc/apt/sources.list.d/xenial.list
-elif [[ "$ARCH" == "aarch64" ]]; then
-    # Legacy GPG keys
-    sudo apt-key adv --keyserver hkps://keyserver.ubuntu.com --recv-keys 40976EAF437D05B5 3B4FE6ACC0B21F32
-    
-    echo "deb [arch=arm64] https://ports.ubuntu.com/ubuntu-ports xenial main universe" \
-    | sudo tee /etc/apt/sources.list.d/xenial.list
-elif [[ "$ARCH" == "armhf" ]]; then
-    # Legacy GPG keys
-    sudo apt-key adv --keyserver hkps://keyserver.ubuntu.com --recv-keys 40976EAF437D05B5 3B4FE6ACC0B21F32
-    
-    echo "deb [arch=armhf] https://ports.ubuntu.com/ubuntu-ports xenial main universe" \
-    | sudo tee /etc/apt/sources.list.d/xenial.list
-fi
-
-sudo apt update
-
 case "$ARCH" in
   x86_64)  DEB_ARCH="amd64" ;;
   i386)    DEB_ARCH="i386"  ;;
   aarch64) DEB_ARCH="arm64" ;;
   *)       DEB_ARCH="$ARCH" ;;
 esac
+
+SOURCES_LIST="/etc/apt/sources.list.d/xenial.list"
+
+if [[ "$ARCH" == "aarch64" || "$ARCH" == "armhf" ]]; then
+    # Legacy GPG keys
+    sudo apt-key adv --keyserver hkps://keyserver.ubuntu.com --recv-keys 40976EAF437D05B5 3B4FE6ACC0B21F32
+    
+    echo "deb [arch=${DEB_ARCH}] https://ports.ubuntu.com/ubuntu-ports xenial main universe" \
+    | sudo tee "$SOURCES_LIST"
+else
+    echo "deb [arch=${DEB_ARCH} signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://ubuntu.cs.utah.edu/ubuntu xenial main universe" \
+    | sudo tee "$SOURCES_LIST"
+fi
+
+sudo apt update
 
 apt-get download keepassx:${DEB_ARCH}=2.0.2-1
 apt-get download libaudio2:${DEB_ARCH}=1.9.4-4
@@ -330,14 +323,14 @@ t1iQLL+WzKVkkPaVBQJmNp57AhsMBQkDwmcAAAoJEL+WzKVkkPaVY7oA/icTs/E6
 EOF
 
 if [[ "$ARCH" == "i386" ]]; then
-RUNTIME="runtime-i686"
-wget -O "$AIT_DIR/$RUNTIME.sig" \
-      "https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-i686.sig"
+    RUNTIME="runtime-i686"
+    wget -O "$AIT_DIR/$RUNTIME.sig" \
+          "https://github.com/AppImage/type2-runtime/releases/download/continuous/$RUNTIME.sig"
     wget -O "$AIT_DIR/$RUNTIME" \
-      "https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-i686"
+          "https://github.com/AppImage/type2-runtime/releases/download/continuous/$RUNTIME"
 else
-wget -O "$AIT_DIR/$RUNTIME.sig" \
-      "https://github.com/AppImage/type2-runtime/releases/download/continuous/$RUNTIME.sig"
+    wget -O "$AIT_DIR/$RUNTIME.sig" \
+          "https://github.com/AppImage/type2-runtime/releases/download/continuous/$RUNTIME.sig"
     wget -O "$AIT_DIR/$RUNTIME" \
       "https://github.com/AppImage/type2-runtime/releases/download/continuous/$RUNTIME"
 fi
@@ -356,5 +349,9 @@ fi
 
 shopt -s extglob
 rm -rf "$APPDIR" "$AIT_DIR"
+
+sudo rm -rf "$SOURCES_LIST"
+sudo apt-key del 40976EAF437D05B5
+sudo apt-key del 3B4FE6ACC0B21F32
 
 echo "Done"
