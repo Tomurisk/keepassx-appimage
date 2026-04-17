@@ -8,6 +8,13 @@ alias wget='wget --https-only --secure-protocol=TLSv1_2'
 
 # Architecture
 : "${ARCH:=$(uname -m)}"
+
+# Normalize Intel 32-bit architectures,
+# de facto i386 in the script
+case "$ARCH" in
+    i?86) ARCH="i386" ;;
+esac
+
 : "${AIT_ARCH:=$ARCH}"
 
 # Versions
