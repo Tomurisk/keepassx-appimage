@@ -298,7 +298,7 @@ export KDE_FULL_SESSION=false
 export GTK2_RC_FILES=/dev/null
 
 # Use only the AppImage's icon directories
-export XDG_DATA_DIRS="\$HERE/usr/share"
+export XDG_DATA_DIRS="\$HERE/usr/share:\${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
 
 export LD_LIBRARY_PATH="\$HERE/usr/lib/${LIBS_BASE}:\${LD_LIBRARY_PATH:-}"
 exec "\$HERE/usr/bin/keepassx" "\$@"
@@ -330,6 +330,7 @@ t1iQLL+WzKVkkPaVBQJmNp57AhsMBQkDwmcAAAoJEL+WzKVkkPaVY7oA/icTs/E6
 EOF
 
 if [[ "$ARCH" == "i386" ]]; then
+RUNTIME="runtime-i686"
 wget -O "$AIT_DIR/$RUNTIME.sig" \
       "https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-i686.sig"
     wget -O "$AIT_DIR/$RUNTIME" \
