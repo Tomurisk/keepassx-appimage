@@ -189,17 +189,17 @@ extract_deb libqtgui4_*.deb \
 # libpng12-0
 extract_deb libpng12-0_*.deb \
     "./$DOC/libpng12-0/copyright" \
-    "./lib/${LIBS_BASE}/libpng12.so.0*"
+    "./lib/$LIBS_BASE/libpng12.so.0*"
 
 # libgcrypt20
 extract_deb libgcrypt20_*.deb \
     "./$DOC/libgcrypt20/copyright" \
-    "./lib/${LIBS_BASE}/libgcrypt.so.20*"
+    "./lib/$LIBS_BASE/libgcrypt.so.20*"
 
 # libgpg-error0
 extract_deb libgpg-error0_*.deb \
     "./$DOC/libgpg-error0/copyright" \
-    "./lib/${LIBS_BASE}/libgpg-error.so.0*"
+    "./lib/$LIBS_BASE/libgpg-error.so.0*"
 
 # Force‑decompress real .svgz files
 gzip -dc "$APPDIR/$ICONS/keepassx.svgz" \
