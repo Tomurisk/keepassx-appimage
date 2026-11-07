@@ -62,12 +62,17 @@ case "$ARCH" in
 esac
 
 SOURCES_LIST="/etc/apt/sources.list.d/xenial.list"
+ARM_KEYRING="/etc/apt/keyrings/ubuntu-arm-archive-keyring.gpg"
 
 if [[ "$ARCH" == "aarch64" || "$ARCH" == "armhf" ]]; then
     # Legacy GPG keys
-    sudo apt-key adv --keyserver hkps://keyserver.ubuntu.com --recv-keys 40976EAF437D05B5 3B4FE6ACC0B21F32
+    sudo mkdir -m 700 /tmp/gpg-tmp
+    sudo gpg --homedir /tmp/gpg-tmp --trust-model always --no-default-keyring --keyring gnupg-ring:$ARM_KEYRING \
+      --keyserver hkps://keyserver.ubuntu.com --recv-keys 40976EAF437D05B5 3B4FE6ACC0B21F32
+    sudo chmod 644 $ARM_KEYRING
+    sudo rm -rf /tmp/gpg-tmp
     
-    echo "deb [arch=${DEB_ARCH}] https://ports.ubuntu.com/ubuntu-ports xenial main universe" \
+    echo "deb [arch=${DEB_ARCH} signed-by=${ARM_KEYRING}] https://ports.ubuntu.com/ubuntu-ports xenial main universe" \
     | sudo tee "$SOURCES_LIST"
 else
     echo "deb [arch=${DEB_ARCH} signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://ubuntu.cs.utah.edu/ubuntu xenial main universe" \
@@ -143,8 +148,8 @@ extract_deb() {
     # Extract only the needed files, replace ./lib to ./usr/lib for
     # some extractions to succeed
     tar --wildcards \
-    --transform='s|^./lib/|./usr/lib/|' \
-    -xf "$DATA_TAR" -C "$APPDIR" \
+      --transform='s|^./lib/|./usr/lib/|' \
+      -xf "$DATA_TAR" -C "$APPDIR" \
     "${patterns[@]}"
 
     # Cleanup
@@ -212,7 +217,7 @@ cp "$APPDIR/$ICONS/keepassx.svg" $APPDIR
 sed -i 's/Exec=.*/Exec=\/AppRun/' "$APPDIR/usr/share/applications/keepassx.desktop"
 cp "$APPDIR/usr/share/applications/keepassx.desktop" $APPDIR
 
-rm -rf *.deb
+rm -f *.deb
 
 ###############################################
 # Registration script
@@ -352,8 +357,7 @@ fi
 shopt -s extglob
 rm -rf "$APPDIR" "$AIT_DIR"
 
-sudo rm -rf "$SOURCES_LIST"
-sudo apt-key del 40976EAF437D05B5
-sudo apt-key del 3B4FE6ACC0B21F32
+sudo rm -f "$SOURCES_LIST"
+sudo rm -f "$ARM_KEYRING"
 
 echo "Done"
