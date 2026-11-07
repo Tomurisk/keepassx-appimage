@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+shopt -s expand_aliases
+
 alias wget='wget --https-only --secure-protocol=TLSv1_2'
 
 ###############################################
